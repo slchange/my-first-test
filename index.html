@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>カレンダー</title>
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+  <style>
+    :root {
+      --page-bg: #f3f4ef;
+      --panel-bg: #fffefa;
+      --text: #343a35;
+      --muted: #788078;
+      --line: #e4e7df;
+      --accent: #718878;
+      --accent-dark: #5b7162;
+      --accent-pale: #edf2ec;
+      --saturday: #66819a;
+      --sunday: #b86f68;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 24px;
+      background: var(--page-bg);
+      color: var(--text);
+      font-family: "Yu Gothic", "Hiragino Kaku Gothic ProN", sans-serif;
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+      transition: background-color 0.15s, border-color 0.15s;
+    }
+
+    button:focus-visible,
+    select:focus-visible,
+    input:focus-visible {
+      outline: 3px solid #9aaf9d80;
+      outline-offset: 2px;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 280px minmax(0, 1fr);
+      gap: 24px;
+      max-width: 1100px;
+      margin: 20px auto;
+    }
+
+    .panel {
+      padding: 22px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--panel-bg);
+      box-shadow: 0 8px 24px #39483b12;
+    }
+
+    h1,
+    h2 {
+      margin-top: 0;
+      color: #39443c;
+      letter-spacing: 0.03em;
+    }
+
+    h1 {
+      font-size: 26px;
+    }
+
+    h2 {
+      font-size: 18px;
+    }
+
+    .events-heading {
+      margin-top: 28px;
+    }
+
+    label {
+      display: block;
+      margin: 14px 0 6px;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    select,
+    input {
+      min-height: 40px;
+      padding: 8px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--text);
+    }
+
+    input {
+      padding: 9px 11px;
+    }
+
+    .date-selects,
+    .time-selects {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+    }
+
+    .time-selects {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .date-selects select,
+    .time-selects select {
+      width: 100%;
+    }
+
+    #eventInput {
+      width: 100%;
+    }
+
+    #addEventButton,
+    .secondary-button,
+    .controls button,
+    #todayButton,
+    .event-list button {
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: #4d5b50;
+    }
+
+    #addEventButton {
+      width: 100%;
+      min-height: 42px;
+      margin-top: 12px;
+      border-color: var(--accent);
+      background: var(--accent);
+      color: #fff;
+      font-weight: 600;
+    }
+
+    #addEventButton:hover {
+      border-color: var(--accent-dark);
+      background: var(--accent-dark);
+    }
+
+    .secondary-button {
+      width: 100%;
+      margin-top: 8px;
+    }
+
+    .secondary-button:hover,
+    .controls button:hover,
+    #todayButton:hover,
+    .event-list button:hover {
+      border-color: #b8c7ba;
+      background: var(--accent-pale);
+    }
+
+    #selectedDateLabel {
+      margin-bottom: 10px;
+      font-weight: bold;
+    }
+
+    .event-list {
+      padding-left: 0;
+      list-style: none;
+    }
+
+    .event-list li {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin: 8px 0;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .event-list li > span {
+      flex: 1 1 140px;
+      overflow-wrap: anywhere;
+    }
+
+    .event-list button {
+      padding: 5px 9px;
+    }
+
+    .controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 18px;
+    }
+
+    .controls button {
+      white-space: nowrap;
+    }
+
+    #monthLabel {
+      color: #45564a;
+      font-size: 18px;
+      text-align: center;
+    }
+
+    .weekdays,
+    .days {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 5px;
+      text-align: center;
+    }
+
+    .weekdays {
+      margin-bottom: 6px;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .weekdays span:first-child,
+    .day.sunday .day-number,
+    .day.holiday .day-number {
+      color: var(--sunday);
+    }
+
+    .weekdays span:last-child,
+    .day.saturday .day-number {
+      color: var(--saturday);
+    }
+
+    .day,
+    .empty {
+      min-height: 82px;
+    }
+
+    .day {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 3px;
+      width: 100%;
+      padding: 5px;
+      border: 1px solid transparent;
+      border-radius: 9px;
+      background: transparent;
+      text-align: left;
+    }
+
+    .day:hover {
+      border-color: var(--line);
+      background: #f6f7f2;
+    }
+
+    .day-number {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .day.today {
+      background: #f0f2e9;
+    }
+
+    .day.selected {
+      outline: 2px solid var(--accent);
+      background: var(--accent-pale);
+    }
+
+    .event-preview {
+      width: 100%;
+      overflow: hidden;
+      padding: 2px 4px;
+      border-radius: 4px;
+      background: #edf2ec;
+      color: #536558;
+      font-size: 11px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    #todayButton {
+      margin-top: 16px;
+    }
+
+    .edit-form,
+    .delete-confirmation {
+      flex: 1 0 100%;
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 6px;
+      padding: 9px;
+      border-radius: 8px;
+      background: #f5f2ed;
+    }
+
+    .edit-form input[type="text"] {
+      flex: 1 1 150px;
+      min-width: 120px;
+    }
+
+    .edit-form input[type="time"] {
+      flex: 0 1 130px;
+    }
+
+    .edit-form button,
+    .delete-confirmation button {
+      padding: 6px 10px;
+    }
+
+    .delete-confirmation span {
+      flex: 1 1 140px;
+    }
+
+    .event-list .delete-confirmation .confirm-delete {
+      border-color: var(--sunday);
+      background: var(--sunday);
+      color: #fff;
+    }
+
+    .event-list .delete-confirmation .confirm-delete:hover {
+      border-color: #a45f59;
+      background: #a45f59;
+    }
+
+    @media (max-width: 700px) {
+      body {
+        padding: 12px;
+      }
+
+      .layout {
+        grid-template-columns: 1fr;
+        margin: 0 auto;
+      }
+
+      .panel {
+        padding: 16px;
+        border-radius: 12px;
+      }
+
+      .day,
+      .empty {
+        min-height: 68px;
+      }
+
+      .event-preview {
+        font-size: 10px;
+      }
+
+      #monthLabel {
+        font-size: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="layout">
+    <section class="panel">
+      <h2>予定を入力</h2>
+
+      <p id="selectedDateLabel"></p>
+
+      <label for="yearSelect">日付</label>
+      <div class="date-selects">
+        <select id="yearSelect" aria-label="年"></select>
+        <select id="monthSelect" aria-label="月"></select>
+        <select id="daySelect" aria-label="日"></select>
+      </div>
+
+      <label for="hourSelect">時間</label>
+      <div class="time-selects">
+        <select id="hourSelect" aria-label="時"></select>
+        <select id="minuteSelect" aria-label="分"></select>
+      </div>
+
+      <label for="eventInput">予定</label>
+      <input id="eventInput" type="text" placeholder="例：打ち合わせ">
+
+      <button id="addEventButton" type="button">予定を追加</button>
+      <button id="exportButton" class="secondary-button" type="button">
+        予定をエクスポート（.ics）
+      </button>
+
+      <h2 class="events-heading">この日の予定</h2>
+      <ul id="eventList" class="event-list"></ul>
+    </section>
+
+    <section class="panel">
+      <h1>カレンダー</h1>
+
+      <div class="controls">
+        <button id="prevButton" type="button">◀ 前の月</button>
+        <strong id="monthLabel"></strong>
+        <button id="nextButton" type="button">次の月 ▶</button>
+      </div>
+
+      <div class="weekdays">
+        <span>日</span><span>月</span><span>火</span><span>水</span>
+        <span>木</span><span>金</span><span>土</span>
+      </div>
+
+      <div class="days" id="days"></div>
+      <button id="todayButton" type="button">今日に戻る</button>
+    </section>
+  </main>
+
+  <script>
+    const monthLabel = document.getElementById("monthLabel");
+    const daysElement = document.getElementById("days");
+    const eventList = document.getElementById("eventList");
+    const eventInput = document.getElementById("eventInput");
+    const yearSelect = document.getElementById("yearSelect");
+    const monthSelect = document.getElementById("monthSelect");
+    const daySelect = document.getElementById("daySelect");
+    const hourSelect = document.getElementById("hourSelect");
+    const minuteSelect = document.getElementById("minuteSelect");
+    const selectedDateLabel = document.getElementById("selectedDateLabel");
+
+    const STORAGE_KEY = "calendarEvents";
+    let viewDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    let selectedDate = new Date();
+    let holidays = {};
+    let events = {};
+
+    // 保存済みの予定を読み込みます
+    try {
+      const savedEvents = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+      if (savedEvents && typeof savedEvents === "object" && !Array.isArray(savedEvents)) {
+        events = savedEvents;
+      }
+    } catch (error) {
+      events = {};
+    }
+
+    // 以前の形式で保存された予定を新しい形式に変換します
+    for (const key of Object.keys(events)) {
+      if (!Array.isArray(events[key])) {
+        delete events[key];
+        continue;
+      }
+
+      events[key] = events[key]
+        .map(event => {
+          if (typeof event === "string") {
+            return { time: "", title: event };
+          }
+
+          if (event && typeof event === "object") {
+            return {
+              time: typeof event.time === "string" ? event.time : "",
+              title: typeof event.title === "string" ? event.title : ""
+            };
+          }
+
+          return null;
+        })
+        .filter(event => event && event.title.trim() !== "");
+    }
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(events));
+
+    function makeDateKey(date) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    }
+
+    function isSameDay(dateA, dateB) {
+      return dateA.getFullYear() === dateB.getFullYear()
+        && dateA.getMonth() === dateB.getMonth()
+        && dateA.getDate() === dateB.getDate();
+    }
+
+    function setDayOptions(year, month, selectedDay) {
+      const lastDay = new Date(year, month, 0).getDate();
+      daySelect.innerHTML = "";
+
+      for (let day = 1; day <= lastDay; day++) {
+        daySelect.add(new Option(`${day}日`, day));
+      }
+
+      daySelect.value = String(Math.min(selectedDay, lastDay));
+    }
+
+    function setDateControls() {
+      const selectedYear = selectedDate.getFullYear();
+      const selectedMonth = selectedDate.getMonth() + 1;
+      const currentYear = new Date().getFullYear();
+      const firstYear = Math.min(currentYear - 10, selectedYear);
+      const lastYear = Math.max(currentYear + 20, selectedYear);
+
+      yearSelect.innerHTML = "";
+      for (let year = firstYear; year <= lastYear; year++) {
+        yearSelect.add(new Option(`${year}年`, year));
+      }
+
+      monthSelect.innerHTML = "";
+      for (let month = 1; month <= 12; month++) {
+        monthSelect.add(new Option(`${month}月`, month));
+      }
+
+      yearSelect.value = String(selectedYear);
+      monthSelect.value = String(selectedMonth);
+      setDayOptions(selectedYear, selectedMonth, selectedDate.getDate());
+    }
+
+    function setTimeOptions() {
+      for (let hour = 0; hour < 24; hour++) {
+        const value = String(hour).padStart(2, "0");
+        hourSelect.add(new Option(`${value}時`, value));
+      }
+
+      for (const minute of ["00", "15", "30", "45"]) {
+        minuteSelect.add(new Option(`${minute}分`, minute));
+      }
+
+      hourSelect.value = "09";
+      minuteSelect.value = "00";
+    }
+
+    function renderEvents() {
+      const key = makeDateKey(selectedDate);
+      const dayEvents = events[key] || [];
+
+      selectedDateLabel.textContent =
+        `${selectedDate.getFullYear()}年${selectedDate.getMonth() + 1}月${selectedDate.getDate()}日の予定`;
+
+      eventList.innerHTML = "";
+
+      if (dayEvents.length === 0) {
+        const item = document.createElement("li");
+        item.textContent = "予定はありません";
+        eventList.appendChild(item);
+        return;
+      }
+
+      dayEvents.forEach((event, index) => {
+        const item = document.createElement("li");
+        const text = document.createElement("span");
+        text.textContent = `${event.time ? event.time + " " : ""}${event.title}`;
+
+        const editButton = document.createElement("button");
+        editButton.type = "button";
+        editButton.textContent = "編集";
+        editButton.addEventListener("click", () => {
+          if (item.querySelector(".edit-form, .delete-confirmation")) return;
+
+          const editForm = document.createElement("div");
+          editForm.className = "edit-form";
+
+          const titleInput = document.createElement("input");
+          titleInput.type = "text";
+          titleInput.value = event.title;
+          titleInput.setAttribute("aria-label", "予定の内容");
+
+          const timeInput = document.createElement("input");
+          timeInput.type = "time";
+          timeInput.value = event.time || "";
+          timeInput.setAttribute("aria-label", "予定の時刻");
+
+          const saveButton = document.createElement("button");
+          saveButton.type = "button";
+          saveButton.textContent = "保存";
+          saveButton.addEventListener("click", () => {
+            const newTitle = titleInput.value.trim();
+
+            if (!newTitle) {
+              alert("予定の内容を入力してください。");
+              titleInput.focus();
+              return;
+            }
+
+            events[key][index] = {
+              time: timeInput.value,
+              title: newTitle
+            };
+
+            events[key].sort((a, b) => a.time.localeCompare(b.time));
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(events));
+            renderCalendar();
+          });
+
+          const cancelButton = document.createElement("button");
+          cancelButton.type = "button";
+          cancelButton.textContent = "キャンセル";
+          cancelButton.addEventListener("click", () => {
+            editForm.remove();
+          });
+
+          editForm.append(titleInput, timeInput, saveButton, cancelButton);
+          item.appendChild(editForm);
+          titleInput.focus();
+        });
+
+        const deleteButton = document.createElement("button");
+        deleteButton.type = "button";
+        deleteButton.textContent = "削除";
+        deleteButton.addEventListener("click", () => {
+          if (item.querySelector(".edit-form, .delete-confirmation")) return;
+
+          const confirmation = document.createElement("div");
+          confirmation.className = "delete-confirmation";
+
+          const message = document.createElement("span");
+          message.textContent = "この予定を削除しますか？";
+
+          const confirmButton = document.createElement("button");
+          confirmButton.type = "button";
+          confirmButton.className = "confirm-delete";
+          confirmButton.textContent = "削除する";
+          confirmButton.addEventListener("click", () => {
+            events[key].splice(index, 1);
+
+            if (events[key].length === 0) {
+              delete events[key];
+            }
+
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(events));
+            renderCalendar();
+          });
+
+          const cancelButton = document.createElement("button");
+          cancelButton.type = "button";
+          cancelButton.textContent = "キャンセル";
+          cancelButton.addEventListener("click", () => {
+            confirmation.remove();
+          });
+
+          confirmation.append(message, confirmButton, cancelButton);
+          item.appendChild(confirmation);
+        });
+
+        item.append(
+          text,
+          editButton,
+          deleteButton
+        );
+        eventList.appendChild(item);
+      });
+    }
+
+    function renderCalendar() {
+      const year = viewDate.getFullYear();
+      const month = viewDate.getMonth();
+
+      monthLabel.textContent = `${year}年${month + 1}月`;
+      daysElement.innerHTML = "";
+
+      const firstWeekday = new Date(year, month, 1).getDay();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+      for (let i = 0; i < firstWeekday; i++) {
+        const emptyCell = document.createElement("div");
+        emptyCell.className = "empty";
+        daysElement.appendChild(emptyCell);
+      }
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const date = new Date(year, month, day);
+        const key = makeDateKey(date);
+        const button = document.createElement("button");
+        const dayNumber = document.createElement("span");
+        const weekday = date.getDay();
+        const holidayName = holidays[key];
+
+        button.type = "button";
+        button.className = "day";
+        dayNumber.className = "day-number";
+        dayNumber.textContent = day;
+        button.appendChild(dayNumber);
+
+        if (weekday === 6) button.classList.add("saturday");
+        if (weekday === 0) button.classList.add("sunday");
+
+        if (holidayName) {
+          button.classList.add("holiday");
+          button.title = holidayName;
+        }
+
+        if (isSameDay(date, new Date())) button.classList.add("today");
+        if (isSameDay(date, selectedDate)) button.classList.add("selected");
+
+        const dayEvents = events[key] || [];
+        dayEvents.slice(0, 2).forEach(event => {
+          const preview = document.createElement("span");
+          preview.className = "event-preview";
+          preview.textContent = `${event.time ? event.time + " " : ""}${event.title}`;
+          button.appendChild(preview);
+        });
+
+        if (dayEvents.length > 2) {
+          const more = document.createElement("span");
+          more.className = "event-preview";
+          more.textContent = `ほか ${dayEvents.length - 2} 件`;
+          button.appendChild(more);
+        }
+
+        button.addEventListener("click", () => {
+          selectedDate = date;
+          setDateControls();
+          renderCalendar();
+        });
+
+        daysElement.appendChild(button);
+      }
+
+      renderEvents();
+    }
+
+    function updateSelectedDateFromControls() {
+      const year = Number(yearSelect.value);
+      const month = Number(monthSelect.value);
+      const selectedDay = Number(daySelect.value);
+      const lastDay = new Date(year, month, 0).getDate();
+      const day = Math.min(selectedDay, lastDay);
+
+      setDayOptions(year, month, day);
+      selectedDate = new Date(year, month - 1, day);
+      viewDate = new Date(year, month - 1, 1);
+      renderCalendar();
+    }
+
+    yearSelect.addEventListener("change", updateSelectedDateFromControls);
+    monthSelect.addEventListener("change", updateSelectedDateFromControls);
+    daySelect.addEventListener("change", updateSelectedDateFromControls);
+
+    document.getElementById("prevButton").addEventListener("click", () => {
+      viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1);
+      renderCalendar();
+    });
+
+    document.getElementById("nextButton").addEventListener("click", () => {
+      viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1);
+      renderCalendar();
+    });
+
+    document.getElementById("todayButton").addEventListener("click", () => {
+      selectedDate = new Date();
+      viewDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
+      setDateControls();
+      renderCalendar();
+    });
+
+    document.getElementById("addEventButton").addEventListener("click", () => {
+      const title = eventInput.value.trim();
+
+      if (!title) {
+        alert("予定を入力してください。");
+        return;
+      }
+
+      const key = makeDateKey(selectedDate);
+      if (!events[key]) events[key] = [];
+
+      const time = `${hourSelect.value}:${minuteSelect.value}`;
+      events[key].push({ time, title });
+      events[key].sort((a, b) => a.time.localeCompare(b.time));
+
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(events));
+      eventInput.value = "";
+      renderCalendar();
+    });
+
+    function foldIcsLine(line) {
+      let result = "";
+      let currentLine = "";
+      let byteCount = 0;
+
+      for (const character of line) {
+        const characterBytes = new TextEncoder().encode(character).length;
+
+        if (byteCount + characterBytes > 75) {
+          result += currentLine + "\r\n";
+          currentLine = " " + character;
+          byteCount = 1 + characterBytes;
+        } else {
+          currentLine += character;
+          byteCount += characterBytes;
+        }
+      }
+
+      return result + currentLine;
+    }
+
+    function escapeIcsText(text) {
+      return String(text)
+        .replace(/\\/g, "\\\\")
+        .replace(/\r\n|\n|\r/g, "\\n")
+        .replace(/,/g, "\\,")
+        .replace(/;/g, "\\;");
+    }
+
+    document.getElementById("exportButton").addEventListener("click", () => {
+      const lines = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//Calendar App//JA",
+        "CALSCALE:GREGORIAN",
+        "X-WR-CALNAME:カレンダー",
+        "BEGIN:VTIMEZONE",
+        "TZID:Asia/Tokyo",
+        "BEGIN:STANDARD",
+        "DTSTART:19700101T000000",
+        "TZOFFSETFROM:+0900",
+        "TZOFFSETTO:+0900",
+        "TZNAME:JST",
+        "END:STANDARD",
+        "END:VTIMEZONE"
+      ];
+
+      const timestamp = new Date().toISOString()
+        .replace(/[-:]/g, "")
+        .replace(/\.\d{3}Z$/, "Z");
+
+      let eventNumber = 0;
+
+      for (const [dateKey, dayEvents] of Object.entries(events)) {
+        if (!Array.isArray(dayEvents)) continue;
+
+        const compactDate = dateKey.split("-").join("");
+
+        for (let index = 0; index < dayEvents.length; index++) {
+          const event = dayEvents[index];
+          if (!event || !event.title) continue;
+
+          eventNumber++;
+          lines.push("BEGIN:VEVENT");
+          lines.push(`UID:${dateKey}-${index}@local-calendar`);
+          lines.push(`DTSTAMP:${timestamp}`);
+          lines.push(`SUMMARY:${escapeIcsText(event.title)}`);
+
+          if (event.time && /^([01]\d|2[0-3]):[0-5]\d$/.test(event.time)) {
+            const compactTime = event.time.replace(":", "") + "00";
+            lines.push(`DTSTART;TZID=Asia/Tokyo:${compactDate}T${compactTime}`);
+            lines.push("DURATION:PT30M");
+          } else {
+            const [year, month, day] = dateKey.split("-").map(Number);
+            const nextDay = new Date(year, month - 1, day + 1);
+            const nextDate = [
+              nextDay.getFullYear(),
+              String(nextDay.getMonth() + 1).padStart(2, "0"),
+              String(nextDay.getDate()).padStart(2, "0")
+            ].join("");
+
+            lines.push(`DTSTART;VALUE=DATE:${compactDate}`);
+            lines.push(`DTEND;VALUE=DATE:${nextDate}`);
+          }
+
+          lines.push("END:VEVENT");
+        }
+      }
+
+      if (eventNumber === 0) {
+        alert("エクスポートする予定がありません。");
+        return;
+      }
+
+      lines.push("END:VCALENDAR");
+
+      const fileContents = lines.map(foldIcsLine).join("\r\n") + "\r\n";
+      const blob = new Blob([fileContents], {
+        type: "text/calendar;charset=utf-8"
+      });
+      const downloadUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+
+      link.href = downloadUrl;
+      link.download = "calendar-events.ics";
+      link.click();
+
+      URL.revokeObjectURL(downloadUrl);
+    });
+
+    setDateControls();
+    setTimeOptions();
+    renderCalendar();
+
+    fetch("https://holidays-jp.github.io/api/v1/date.json")
+      .then(response => {
+        if (!response.ok) {
+          throw new Error("祝日データを取得できませんでした");
+        }
+        return response.json();
+      })
+      .then(data => {
+        holidays = data;
+        renderCalendar();
+      })
+      .catch(error => console.error(error));
+  </script>
+</body>
+</html>
